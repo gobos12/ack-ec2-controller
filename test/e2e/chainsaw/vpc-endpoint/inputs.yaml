@@ -126,6 +126,13 @@ values:
     out=$(aws ec2 delete-subnet --subnet-id $DS_SUBNET_B 2>&1) && exit 0;
     case "$out" in *DependencyViolation*) sleep 10 ;; *InvalidSubnetID.NotFound*) exit 0 ;; *) echo "$out" >&2; exit 1 ;; esac;
     done; echo "$out" >&2; exit 1
+# The same two subnets, in ID order. The subnetIDs check sorts AWS's list when
+# the test runs, but the expected list keeps the spec's order, so the spec
+# lists them sorted
+- name: DS_SUBNET_1
+  command: printf '%s\n' "$DS_SUBNET_A" "$DS_SUBNET_B" | sort | head -n 1
+- name: DS_SUBNET_2
+  command: printf '%s\n' "$DS_SUBNET_A" "$DS_SUBNET_B" | sort | tail -n 1
 create:
   serviceName: com.amazonaws.$REGION.s3
   vpcEndpointType: Gateway
@@ -203,8 +210,8 @@ variants:
       from:
         name: vpce-vpc
     subnetIDs:
-    - $DS_SUBNET_A
-    - $DS_SUBNET_B
+    - $DS_SUBNET_1
+    - $DS_SUBNET_2
     securityGroupRefs:
     - from:
         name: vpce-sg-a
@@ -228,6 +235,11 @@ checks:
   securityGroupRefs:
     path: Groups
     select: GroupId
+    unordered: true
+  # AWS doesn't keep the order the subnets were given in, and the controller
+  # copies AWS's order into the spec
+  subnetIDs:
+    path: SubnetIds
     unordered: true
   # A JSON document: compared by content, since AWS may reorder its keys
   policyDocument:

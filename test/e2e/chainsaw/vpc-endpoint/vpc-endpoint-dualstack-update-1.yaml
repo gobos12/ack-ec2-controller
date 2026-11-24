@@ -11,8 +11,8 @@ spec:
         name: vpce-sg-a
   serviceName: (join('', ['com.amazonaws.', x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.REGION, '.sqs']))
   subnetIDs:
-    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_A]))
-    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_B]))
+    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_1]))
+    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_2]))
   vpcEndpointType: Interface
   vpcRef:
     from:

@@ -61,7 +61,7 @@ spec:
               export AZ
               kubectl patch configmap ack-test-values -n "$NAMESPACE" --type merge -p "$(jq -n --arg v "$AZ" '{data: {AZ: $v}}')" >/dev/null
 
-              END_DATE=$(sh -euc 'date -u -d '\''+1 day'\'' +%Y-%m-%dT%H:%M:%SZ') || { echo "value END_DATE: command failed" >&2; exit 1; }
+              END_DATE=$(sh -euc 'date -u -d @$(($(date +%s) + 86400)) +%Y-%m-%dT%H:%M:%SZ') || { echo "value END_DATE: command failed" >&2; exit 1; }
               [ -n "$END_DATE" ] || { echo "value END_DATE: command printed nothing" >&2; exit 1; }
               export END_DATE
               kubectl patch configmap ack-test-values -n "$NAMESPACE" --type merge -p "$(jq -n --arg v "$END_DATE" '{data: {END_DATE: $v}}')" >/dev/null
@@ -141,7 +141,7 @@ spec:
               # A call that fails prints its error, and leaves jq no JSON to read
               jq -n \
                 --argjson describeCapacityReservations "$(aws ec2 describe-capacity-reservations --capacity-reservation-ids $AWS_ID --query 'CapacityReservations[0].{availabilityZone: AvailabilityZone, endDateType: EndDateType, instanceMatchCriteria: InstanceMatchCriteria, instancePlatform: InstancePlatform, instanceType: InstanceType, tags: sort_by(Tags[?!starts_with(Key, `"services.k8s.aws/"`)], &Key), systemTags: sort(Tags[?starts_with(Key, `"services.k8s.aws/"`)].Key)}')" \
-                --argjson endDate "$(d=$(aws ec2 describe-capacity-reservations --capacity-reservation-ids $AWS_ID --query 'CapacityReservations[0].EndDate' --output text) && date -u -d "$d" +'"%Y-%m-%dT%H:%M:%SZ"')" \
+                --argjson endDate "$(d=$(aws ec2 describe-capacity-reservations --capacity-reservation-ids $AWS_ID --query 'CapacityReservations[0].EndDate' --output text) && printf '"%s"' "$(echo "$d" | sed -E 's/(\.[0-9]+)?(\+00:00|Z)$/Z/')")" \
                 --argjson resource "$(aws ec2 describe-capacity-reservations --capacity-reservation-ids $AWS_ID --query 'CapacityReservations[0]')" \
                 '$ARGS.named'
             check:
@@ -193,7 +193,7 @@ spec:
               # A call that fails prints its error, and leaves jq no JSON to read
               jq -n \
                 --argjson describeCapacityReservations "$(aws ec2 describe-capacity-reservations --capacity-reservation-ids $AWS_ID --query 'CapacityReservations[0].{availabilityZone: AvailabilityZone, endDateType: EndDateType, instanceMatchCriteria: InstanceMatchCriteria, instancePlatform: InstancePlatform, instanceType: InstanceType, tags: sort_by(Tags[?!starts_with(Key, `"services.k8s.aws/"`)], &Key), systemTags: sort(Tags[?starts_with(Key, `"services.k8s.aws/"`)].Key)}')" \
-                --argjson endDate "$(d=$(aws ec2 describe-capacity-reservations --capacity-reservation-ids $AWS_ID --query 'CapacityReservations[0].EndDate' --output text) && date -u -d "$d" +'"%Y-%m-%dT%H:%M:%SZ"')" \
+                --argjson endDate "$(d=$(aws ec2 describe-capacity-reservations --capacity-reservation-ids $AWS_ID --query 'CapacityReservations[0].EndDate' --output text) && printf '"%s"' "$(echo "$d" | sed -E 's/(\.[0-9]+)?(\+00:00|Z)$/Z/')")" \
                 --argjson resource "$(aws ec2 describe-capacity-reservations --capacity-reservation-ids $AWS_ID --query 'CapacityReservations[0]')" \
                 '$ARGS.named'
             check:
@@ -264,7 +264,7 @@ spec:
               export AZ
               kubectl patch configmap ack-test-values -n "$NAMESPACE" --type merge -p "$(jq -n --arg v "$AZ" '{data: {AZ: $v}}')" >/dev/null
 
-              END_DATE=$(sh -euc 'date -u -d '\''+1 day'\'' +%Y-%m-%dT%H:%M:%SZ') || { echo "value END_DATE: command failed" >&2; exit 1; }
+              END_DATE=$(sh -euc 'date -u -d @$(($(date +%s) + 86400)) +%Y-%m-%dT%H:%M:%SZ') || { echo "value END_DATE: command failed" >&2; exit 1; }
               [ -n "$END_DATE" ] || { echo "value END_DATE: command printed nothing" >&2; exit 1; }
               export END_DATE
               kubectl patch configmap ack-test-values -n "$NAMESPACE" --type merge -p "$(jq -n --arg v "$END_DATE" '{data: {END_DATE: $v}}')" >/dev/null

@@ -178,6 +178,16 @@ spec:
               [ -n "$DS_SUBNET_B" ] || { echo "value DS_SUBNET_B: command printed nothing" >&2; exit 1; }
               export DS_SUBNET_B
               kubectl patch configmap ack-test-values -n "$NAMESPACE" --type merge -p "$(jq -n --arg v "$DS_SUBNET_B" '{data: {DS_SUBNET_B: $v}}')" >/dev/null
+
+              DS_SUBNET_1=$(sh -euc 'printf '\''%s\n'\'' "$DS_SUBNET_A" "$DS_SUBNET_B" | sort | head -n 1') || { echo "value DS_SUBNET_1: command failed" >&2; exit 1; }
+              [ -n "$DS_SUBNET_1" ] || { echo "value DS_SUBNET_1: command printed nothing" >&2; exit 1; }
+              export DS_SUBNET_1
+              kubectl patch configmap ack-test-values -n "$NAMESPACE" --type merge -p "$(jq -n --arg v "$DS_SUBNET_1" '{data: {DS_SUBNET_1: $v}}')" >/dev/null
+
+              DS_SUBNET_2=$(sh -euc 'printf '\''%s\n'\'' "$DS_SUBNET_A" "$DS_SUBNET_B" | sort | tail -n 1') || { echo "value DS_SUBNET_2: command failed" >&2; exit 1; }
+              [ -n "$DS_SUBNET_2" ] || { echo "value DS_SUBNET_2: command printed nothing" >&2; exit 1; }
+              export DS_SUBNET_2
+              kubectl patch configmap ack-test-values -n "$NAMESPACE" --type merge -p "$(jq -n --arg v "$DS_SUBNET_2" '{data: {DS_SUBNET_2: $v}}')" >/dev/null
       cleanup:
         - description: Clean up what the values' commands created
           script:
@@ -242,6 +252,10 @@ spec:
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_A)
               - name: DS_SUBNET_B
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_B)
+              - name: DS_SUBNET_1
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_1)
+              - name: DS_SUBNET_2
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_2)
             content: |-
               export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
               # A call that fails prints its error, and leaves jq no JSON to read
@@ -307,6 +321,10 @@ spec:
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_A)
               - name: DS_SUBNET_B
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_B)
+              - name: DS_SUBNET_1
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_1)
+              - name: DS_SUBNET_2
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_2)
             content: |-
               export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
               # A call that fails prints its error, and leaves jq no JSON to read
@@ -372,6 +390,10 @@ spec:
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_A)
               - name: DS_SUBNET_B
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_B)
+              - name: DS_SUBNET_1
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_1)
+              - name: DS_SUBNET_2
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_2)
             content: |-
               export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
               # A call that fails prints its error, and leaves jq no JSON to read
@@ -571,6 +593,16 @@ spec:
               [ -n "$DS_SUBNET_B" ] || { echo "value DS_SUBNET_B: command printed nothing" >&2; exit 1; }
               export DS_SUBNET_B
               kubectl patch configmap ack-test-values -n "$NAMESPACE" --type merge -p "$(jq -n --arg v "$DS_SUBNET_B" '{data: {DS_SUBNET_B: $v}}')" >/dev/null
+
+              DS_SUBNET_1=$(sh -euc 'printf '\''%s\n'\'' "$DS_SUBNET_A" "$DS_SUBNET_B" | sort | head -n 1') || { echo "value DS_SUBNET_1: command failed" >&2; exit 1; }
+              [ -n "$DS_SUBNET_1" ] || { echo "value DS_SUBNET_1: command printed nothing" >&2; exit 1; }
+              export DS_SUBNET_1
+              kubectl patch configmap ack-test-values -n "$NAMESPACE" --type merge -p "$(jq -n --arg v "$DS_SUBNET_1" '{data: {DS_SUBNET_1: $v}}')" >/dev/null
+
+              DS_SUBNET_2=$(sh -euc 'printf '\''%s\n'\'' "$DS_SUBNET_A" "$DS_SUBNET_B" | sort | tail -n 1') || { echo "value DS_SUBNET_2: command failed" >&2; exit 1; }
+              [ -n "$DS_SUBNET_2" ] || { echo "value DS_SUBNET_2: command printed nothing" >&2; exit 1; }
+              export DS_SUBNET_2
+              kubectl patch configmap ack-test-values -n "$NAMESPACE" --type merge -p "$(jq -n --arg v "$DS_SUBNET_2" '{data: {DS_SUBNET_2: $v}}')" >/dev/null
       cleanup:
         - description: Clean up what the values' commands created
           script:
@@ -618,6 +650,10 @@ spec:
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_A)
               - name: DS_SUBNET_B
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_B)
+              - name: DS_SUBNET_1
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_1)
+              - name: DS_SUBNET_2
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_2)
             content: |-
               export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
               # A call that fails prints its error, and leaves jq no JSON to read
@@ -672,6 +708,10 @@ spec:
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_A)
               - name: DS_SUBNET_B
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_B)
+              - name: DS_SUBNET_1
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_1)
+              - name: DS_SUBNET_2
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_2)
             content: |-
               export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
               # A call that fails prints its error, and leaves jq no JSON to read
@@ -728,6 +768,10 @@ spec:
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_A)
               - name: DS_SUBNET_B
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_B)
+              - name: DS_SUBNET_1
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_1)
+              - name: DS_SUBNET_2
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_2)
             content: |-
               export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
               # A call that fails prints its error, and leaves jq no JSON to read
@@ -920,6 +964,16 @@ spec:
               [ -n "$DS_SUBNET_B" ] || { echo "value DS_SUBNET_B: command printed nothing" >&2; exit 1; }
               export DS_SUBNET_B
               kubectl patch configmap ack-test-values -n "$NAMESPACE" --type merge -p "$(jq -n --arg v "$DS_SUBNET_B" '{data: {DS_SUBNET_B: $v}}')" >/dev/null
+
+              DS_SUBNET_1=$(sh -euc 'printf '\''%s\n'\'' "$DS_SUBNET_A" "$DS_SUBNET_B" | sort | head -n 1') || { echo "value DS_SUBNET_1: command failed" >&2; exit 1; }
+              [ -n "$DS_SUBNET_1" ] || { echo "value DS_SUBNET_1: command printed nothing" >&2; exit 1; }
+              export DS_SUBNET_1
+              kubectl patch configmap ack-test-values -n "$NAMESPACE" --type merge -p "$(jq -n --arg v "$DS_SUBNET_1" '{data: {DS_SUBNET_1: $v}}')" >/dev/null
+
+              DS_SUBNET_2=$(sh -euc 'printf '\''%s\n'\'' "$DS_SUBNET_A" "$DS_SUBNET_B" | sort | tail -n 1') || { echo "value DS_SUBNET_2: command failed" >&2; exit 1; }
+              [ -n "$DS_SUBNET_2" ] || { echo "value DS_SUBNET_2: command printed nothing" >&2; exit 1; }
+              export DS_SUBNET_2
+              kubectl patch configmap ack-test-values -n "$NAMESPACE" --type merge -p "$(jq -n --arg v "$DS_SUBNET_2" '{data: {DS_SUBNET_2: $v}}')" >/dev/null
       cleanup:
         - description: Clean up what the values' commands created
           script:
@@ -967,11 +1021,15 @@ spec:
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_A)
               - name: DS_SUBNET_B
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_B)
+              - name: DS_SUBNET_1
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_1)
+              - name: DS_SUBNET_2
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_2)
             content: |-
               export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
               # A call that fails prints its error, and leaves jq no JSON to read
               jq -n \
-                --argjson describeVPCEndpoints "$(aws ec2 describe-vpc-endpoints --vpc-endpoint-ids $AWS_ID --query 'VpcEndpoints[0].{ipAddressType: IpAddressType, privateDNSEnabled: PrivateDnsEnabled, serviceName: ServiceName, subnetIDs: SubnetIds, vpcEndpointType: VpcEndpointType, vpcRef: VpcId}')" \
+                --argjson describeVPCEndpoints "$(aws ec2 describe-vpc-endpoints --vpc-endpoint-ids $AWS_ID --query 'VpcEndpoints[0].{ipAddressType: IpAddressType, privateDNSEnabled: PrivateDnsEnabled, serviceName: ServiceName, vpcEndpointType: VpcEndpointType, vpcRef: VpcId}')" \
                 --argjson resource "$(aws ec2 describe-vpc-endpoints --vpc-endpoint-ids $AWS_ID --query 'VpcEndpoints[0]')" \
                 '$ARGS.named'
             check:
@@ -981,13 +1039,13 @@ spec:
                   ipAddressType: ipv4
                   privateDNSEnabled: false
                   serviceName: (join('', ['com.amazonaws.', x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.REGION, '.sqs']))
-                  subnetIDs:
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_A]))
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_B]))
                   vpcEndpointType: Interface
                   vpcRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'VPC', $namespace, 'vpce-vpc').status.vpcID)
                 resource:
                   (sort(Groups[].GroupId)): (sort([x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'SecurityGroup', $namespace, 'vpce-sg-a').status.id]))
+                  (sort(SubnetIds)):
+                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_1]))
+                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_2]))
       catch:
         - describe:
             apiVersion: ec2.services.k8s.aws/v1alpha1
@@ -1024,11 +1082,15 @@ spec:
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_A)
               - name: DS_SUBNET_B
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_B)
+              - name: DS_SUBNET_1
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_1)
+              - name: DS_SUBNET_2
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_2)
             content: |-
               export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
               # A call that fails prints its error, and leaves jq no JSON to read
               jq -n \
-                --argjson describeVPCEndpoints "$(aws ec2 describe-vpc-endpoints --vpc-endpoint-ids $AWS_ID --query 'VpcEndpoints[0].{ipAddressType: IpAddressType, privateDNSEnabled: PrivateDnsEnabled, serviceName: ServiceName, subnetIDs: SubnetIds, vpcEndpointType: VpcEndpointType, vpcRef: VpcId}')" \
+                --argjson describeVPCEndpoints "$(aws ec2 describe-vpc-endpoints --vpc-endpoint-ids $AWS_ID --query 'VpcEndpoints[0].{ipAddressType: IpAddressType, privateDNSEnabled: PrivateDnsEnabled, serviceName: ServiceName, vpcEndpointType: VpcEndpointType, vpcRef: VpcId}')" \
                 --argjson resource "$(aws ec2 describe-vpc-endpoints --vpc-endpoint-ids $AWS_ID --query 'VpcEndpoints[0]')" \
                 '$ARGS.named'
             check:
@@ -1038,13 +1100,13 @@ spec:
                   ipAddressType: dualstack
                   privateDNSEnabled: false
                   serviceName: (join('', ['com.amazonaws.', x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.REGION, '.sqs']))
-                  subnetIDs:
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_A]))
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_B]))
                   vpcEndpointType: Interface
                   vpcRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'VPC', $namespace, 'vpce-vpc').status.vpcID)
                 resource:
                   (sort(Groups[].GroupId)): (sort([x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'SecurityGroup', $namespace, 'vpce-sg-a').status.id]))
+                  (sort(SubnetIds)):
+                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_1]))
+                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_2]))
       catch:
         - describe:
             apiVersion: ec2.services.k8s.aws/v1alpha1
@@ -1081,11 +1143,15 @@ spec:
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_A)
               - name: DS_SUBNET_B
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_B)
+              - name: DS_SUBNET_1
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_1)
+              - name: DS_SUBNET_2
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_2)
             content: |-
               export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
               # A call that fails prints its error, and leaves jq no JSON to read
               jq -n \
-                --argjson describeVPCEndpoints "$(aws ec2 describe-vpc-endpoints --vpc-endpoint-ids $AWS_ID --query 'VpcEndpoints[0].{ipAddressType: IpAddressType, privateDNSEnabled: PrivateDnsEnabled, serviceName: ServiceName, subnetIDs: SubnetIds, vpcEndpointType: VpcEndpointType, vpcRef: VpcId}')" \
+                --argjson describeVPCEndpoints "$(aws ec2 describe-vpc-endpoints --vpc-endpoint-ids $AWS_ID --query 'VpcEndpoints[0].{ipAddressType: IpAddressType, privateDNSEnabled: PrivateDnsEnabled, serviceName: ServiceName, vpcEndpointType: VpcEndpointType, vpcRef: VpcId}')" \
                 --argjson resource "$(aws ec2 describe-vpc-endpoints --vpc-endpoint-ids $AWS_ID --query 'VpcEndpoints[0]')" \
                 '$ARGS.named'
             check:
@@ -1095,13 +1161,13 @@ spec:
                   ipAddressType: ipv4
                   privateDNSEnabled: false
                   serviceName: (join('', ['com.amazonaws.', x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.REGION, '.sqs']))
-                  subnetIDs:
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_A]))
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_B]))
                   vpcEndpointType: Interface
                   vpcRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'VPC', $namespace, 'vpce-vpc').status.vpcID)
                 resource:
                   (sort(Groups[].GroupId)): (sort([x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'SecurityGroup', $namespace, 'vpce-sg-a').status.id]))
+                  (sort(SubnetIds)):
+                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_1]))
+                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_2]))
       catch:
         - describe:
             apiVersion: ec2.services.k8s.aws/v1alpha1
@@ -1274,6 +1340,16 @@ spec:
               [ -n "$DS_SUBNET_B" ] || { echo "value DS_SUBNET_B: command printed nothing" >&2; exit 1; }
               export DS_SUBNET_B
               kubectl patch configmap ack-test-values -n "$NAMESPACE" --type merge -p "$(jq -n --arg v "$DS_SUBNET_B" '{data: {DS_SUBNET_B: $v}}')" >/dev/null
+
+              DS_SUBNET_1=$(sh -euc 'printf '\''%s\n'\'' "$DS_SUBNET_A" "$DS_SUBNET_B" | sort | head -n 1') || { echo "value DS_SUBNET_1: command failed" >&2; exit 1; }
+              [ -n "$DS_SUBNET_1" ] || { echo "value DS_SUBNET_1: command printed nothing" >&2; exit 1; }
+              export DS_SUBNET_1
+              kubectl patch configmap ack-test-values -n "$NAMESPACE" --type merge -p "$(jq -n --arg v "$DS_SUBNET_1" '{data: {DS_SUBNET_1: $v}}')" >/dev/null
+
+              DS_SUBNET_2=$(sh -euc 'printf '\''%s\n'\'' "$DS_SUBNET_A" "$DS_SUBNET_B" | sort | tail -n 1') || { echo "value DS_SUBNET_2: command failed" >&2; exit 1; }
+              [ -n "$DS_SUBNET_2" ] || { echo "value DS_SUBNET_2: command printed nothing" >&2; exit 1; }
+              export DS_SUBNET_2
+              kubectl patch configmap ack-test-values -n "$NAMESPACE" --type merge -p "$(jq -n --arg v "$DS_SUBNET_2" '{data: {DS_SUBNET_2: $v}}')" >/dev/null
       cleanup:
         - description: Clean up what the values' commands created
           script:
@@ -1354,6 +1430,10 @@ spec:
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_A)
               - name: DS_SUBNET_B
                 value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_B)
+              - name: DS_SUBNET_1
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_1)
+              - name: DS_SUBNET_2
+                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.DS_SUBNET_2)
             content: |-
               export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
               # A call that fails prints its error, and leaves jq no JSON to read
