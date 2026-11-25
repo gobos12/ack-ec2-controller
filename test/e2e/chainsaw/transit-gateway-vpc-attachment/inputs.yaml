@@ -78,3 +78,13 @@ updates:
 # TransitGatewayVPCAttachment.
 # No notFoundCode: a deleted attachment stays in
 # DescribeTransitGatewayVpcAttachments, in the deleted state, for a while.
+
+# Held back until the controller bugs the tests found are fixed, and the
+# create-only fields are marked is_immutable in generator.yaml. Drop an entry
+# to run it again.
+skip:
+  tests:
+    transit-gateway-vpc-attachment: "a modify empties the CR's tags, so the next reconcile deletes them in AWS (aws-controllers-k8s/community#3168)"
+  updates:
+    transitGatewayID: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    vpcID: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"

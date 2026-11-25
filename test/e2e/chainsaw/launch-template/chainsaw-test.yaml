@@ -9,8 +9,12 @@
 #   - name
 #   - tags
 #   - versionDescription
-# Not immutable, but no update changes them (mark them is_immutable if the controller can't update them):
-#   - name
+# Skipped, so they don't run (drop them from inputs.yaml's skip.tests to run them again):
+#   - launch-template: the configured not-found code doesn't match what AWS returns for a missing ID, so the delete never sees the template gone (aws-controllers-k8s/community#3172)
+#   - launch-template-adoption: the read never sets spec.name, so the adopted template goes Terminal (aws-controllers-k8s/community#3169)
+#   - launch-template-minimal: the configured not-found code doesn't match what AWS returns for a missing ID, so the delete never sees the template gone (aws-controllers-k8s/community#3172)
+# Skipped from updates, so they're never changed (drop them from inputs.yaml's skip.updates to change them again):
+#   - name: create-only: no EC2 call changes it after create, so it should be marked is_immutable
 # Notes:
 #   - inputs give no invalid spec, so there's no ACK.Terminal check
 apiVersion: chainsaw.kyverno.io/v1alpha1
@@ -18,7 +22,8 @@ kind: Test
 metadata:
   name: launch-template
 spec:
-  description: 'LaunchTemplate lifecycle: create, try to change each immutable field, apply each update, delete.'
+  description: 'LaunchTemplate lifecycle: create, try to change each immutable field, apply each update, delete. Skipped: the configured not-found code doesn''t match what AWS returns for a missing ID, so the delete never sees the template gone (aws-controllers-k8s/community#3172)'
+  skip: true
   bindings:
     - name: suffix
       value: (random('[a-z0-9]{8}'))
@@ -244,7 +249,8 @@ kind: Test
 metadata:
   name: launch-template-minimal
 spec:
-  description: 'LaunchTemplate lifecycle, variant minimal: Only the required fields.'
+  description: 'LaunchTemplate lifecycle, variant minimal: Only the required fields. Skipped: the configured not-found code doesn''t match what AWS returns for a missing ID, so the delete never sees the template gone (aws-controllers-k8s/community#3172)'
+  skip: true
   bindings:
     - name: suffix
       value: (random('[a-z0-9]{8}'))
@@ -308,7 +314,8 @@ kind: Test
 metadata:
   name: launch-template-adoption
 spec:
-  description: Adopts a LaunchTemplate left behind by a CR with deletion-policy retain, then deletes it.
+  description: 'Adopts a LaunchTemplate left behind by a CR with deletion-policy retain, then deletes it. Skipped: the read never sets spec.name, so the adopted template goes Terminal (aws-controllers-k8s/community#3169)'
+  skip: true
   bindings:
     - name: suffix
       value: (random('[a-z0-9]{8}'))

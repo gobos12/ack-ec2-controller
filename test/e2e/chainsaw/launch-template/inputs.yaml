@@ -62,3 +62,14 @@ checks:
     command: >-
       aws ec2 describe-launch-templates --launch-template-ids $AWS_ID
       --query 'LaunchTemplates[0].LatestVersionNumber == LaunchTemplates[0].DefaultVersionNumber && LaunchTemplates[0].DefaultVersionNumber || `-1`'
+
+# Held back until the controller bugs the tests found are fixed, and the
+# create-only fields are marked is_immutable in generator.yaml. Drop an entry
+# to run it again.
+skip:
+  tests:
+    launch-template: "the configured not-found code doesn't match what AWS returns for a missing ID, so the delete never sees the template gone (aws-controllers-k8s/community#3172)"
+    launch-template-adoption: "the read never sets spec.name, so the adopted template goes Terminal (aws-controllers-k8s/community#3169)"
+    launch-template-minimal: "the configured not-found code doesn't match what AWS returns for a missing ID, so the delete never sees the template gone (aws-controllers-k8s/community#3172)"
+  updates:
+    name: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"

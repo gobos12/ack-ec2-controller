@@ -8,13 +8,13 @@
 #   - connectivityType
 #   - subnetRef
 #   - tags
-# Not immutable, but no update changes them (mark them is_immutable if the controller can't update them):
-#   - allocationID
-#   - availabilityMode
-#   - availabilityZoneAddresses
-#   - connectivityType
-#   - subnetID
-#   - vpcID
+# Skipped from updates, so they're never changed (drop them from inputs.yaml's skip.updates to change them again):
+#   - allocationID: create-only for the primary address: only secondary addresses can be added, so it should be marked is_immutable
+#   - availabilityMode: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - availabilityZoneAddresses: needs a regional NAT gateway, which the test account isn't authorized for
+#   - connectivityType: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - subnetID: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - vpcID: create-only: no EC2 call changes it after create, so it should be marked is_immutable
 apiVersion: chainsaw.kyverno.io/v1alpha1
 kind: Test
 metadata:

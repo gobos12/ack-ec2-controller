@@ -17,10 +17,10 @@
 #   - tags
 #   - vpcEndpointType
 #   - vpcRef
-# Not immutable, but no update changes them (mark them is_immutable if the controller can't update them):
-#   - serviceName
-#   - vpcEndpointType
-#   - vpcID
+# Skipped from updates, so they're never changed (drop them from inputs.yaml's skip.updates to change them again):
+#   - serviceName: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - vpcEndpointType: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - vpcID: create-only: no EC2 call changes it after create, so it should be marked is_immutable
 apiVersion: chainsaw.kyverno.io/v1alpha1
 kind: Test
 metadata:

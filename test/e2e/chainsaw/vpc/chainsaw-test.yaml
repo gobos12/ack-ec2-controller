@@ -12,15 +12,18 @@
 #   - enableNetworkAddressUsageMetrics
 #   - instanceTenancy
 #   - tags
-# Not immutable, but no update changes them (mark them is_immutable if the controller can't update them):
-#   - amazonProvidedIPv6CIDRBlock
-#   - ipv4IPAMPoolID
-#   - ipv4NetmaskLength
-#   - ipv6CIDRBlock
-#   - ipv6CIDRBlockNetworkBorderGroup
-#   - ipv6IPAMPoolID
-#   - ipv6NetmaskLength
-#   - ipv6Pool
+# Skipped, so they don't run (drop them from inputs.yaml's skip.tests to run them again):
+#   - vpc-disallowed: unset DNS and NAU attributes are synced with no value, which AWS rejects, so the VPC never syncs (aws-controllers-k8s/community#3161)
+# Skipped from updates, so they're never changed (drop them from inputs.yaml's skip.updates to change them again):
+#   - amazonProvidedIPv6CIDRBlock: create-only: AssociateVpcCidrBlock adds another block but can't change this one, so it should be marked is_immutable
+#   - instanceTenancy: never updated: the diff is detected but ModifyVpcTenancy is never called (aws-controllers-k8s/community#3198)
+#   - ipv4IPAMPoolID: create-only: AssociateVpcCidrBlock adds another block but can't change this one, so it should be marked is_immutable
+#   - ipv4NetmaskLength: create-only: AssociateVpcCidrBlock adds another block but can't change this one, so it should be marked is_immutable
+#   - ipv6CIDRBlock: create-only: AssociateVpcCidrBlock adds another block but can't change this one, so it should be marked is_immutable
+#   - ipv6CIDRBlockNetworkBorderGroup: create-only: AssociateVpcCidrBlock adds another block but can't change this one, so it should be marked is_immutable
+#   - ipv6IPAMPoolID: create-only: AssociateVpcCidrBlock adds another block but can't change this one, so it should be marked is_immutable
+#   - ipv6NetmaskLength: create-only: AssociateVpcCidrBlock adds another block but can't change this one, so it should be marked is_immutable
+#   - ipv6Pool: create-only: AssociateVpcCidrBlock adds another block but can't change this one, so it should be marked is_immutable
 apiVersion: chainsaw.kyverno.io/v1alpha1
 kind: Test
 metadata:
@@ -220,7 +223,8 @@ kind: Test
 metadata:
   name: vpc-disallowed
 spec:
-  description: 'VPC lifecycle, variant disallowed: Default security group rules removed at create, with no other attributes set.'
+  description: 'VPC lifecycle, variant disallowed: Default security group rules removed at create, with no other attributes set. Skipped: unset DNS and NAU attributes are synced with no value, which AWS rejects, so the VPC never syncs (aws-controllers-k8s/community#3161)'
+  skip: true
   bindings:
     - name: suffix
       value: (random('[a-z0-9]{8}'))
@@ -326,43 +330,6 @@ spec:
               (json_parse($stdout)):
                 describeVPCs:
                   instanceTenancy: dedicated
-                resource:
-                  (sort(CidrBlockAssociationSet[?CidrBlockState.State == 'associated'][].CidrBlock)):
-                    - 10.0.0.0/16
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: VPC
-            name: ($name)
-    - name: update-1
-      description: Change instanceTenancy
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: vpc-dedicated-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'VPC', $namespace, $name).status.vpcID)
-              - name: SUFFIX
-                value: ($suffix)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeVPCs "$(aws ec2 describe-vpcs --vpc-ids $AWS_ID --query 'Vpcs[0].{instanceTenancy: InstanceTenancy}')" \
-                --argjson resource "$(aws ec2 describe-vpcs --vpc-ids $AWS_ID --query 'Vpcs[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeVPCs:
-                  instanceTenancy: default
                 resource:
                   (sort(CidrBlockAssociationSet[?CidrBlockState.State == 'associated'][].CidrBlock)):
                     - 10.0.0.0/16

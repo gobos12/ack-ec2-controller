@@ -8,11 +8,11 @@
 #   - name
 #   - tags
 #   - vpcRef
-# Not immutable, but no update changes them (mark them is_immutable if the controller can't update them):
-#   - name
-#   - vpcID
 # Immutable, tried to change:
 #   - description
+# Skipped from updates, so they're never changed (drop them from inputs.yaml's skip.updates to change them again):
+#   - name: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - vpcID: create-only: no EC2 call changes it after create, so it should be marked is_immutable
 # Notes:
 #   - inputs give no invalid spec, so there's no ACK.Terminal check
 apiVersion: chainsaw.kyverno.io/v1alpha1

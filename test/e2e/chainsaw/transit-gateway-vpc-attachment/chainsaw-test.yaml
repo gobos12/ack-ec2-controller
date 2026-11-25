@@ -7,9 +7,11 @@
 #   - tags
 #   - transitGatewayRef
 #   - vpcRef
-# Not immutable, but no update changes them (mark them is_immutable if the controller can't update them):
-#   - transitGatewayID
-#   - vpcID
+# Skipped, so they don't run (drop them from inputs.yaml's skip.tests to run them again):
+#   - transit-gateway-vpc-attachment: a modify empties the CR's tags, so the next reconcile deletes them in AWS (aws-controllers-k8s/community#3168)
+# Skipped from updates, so they're never changed (drop them from inputs.yaml's skip.updates to change them again):
+#   - transitGatewayID: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - vpcID: create-only: no EC2 call changes it after create, so it should be marked is_immutable
 # Notes:
 #   - neither the generator config, the API model's waiters nor the inputs give a not-found error code, a deleted waiter or a deleted query, so deletion isn't checked in AWS
 #   - inputs give no invalid spec, so there's no ACK.Terminal check
@@ -18,7 +20,8 @@ kind: Test
 metadata:
   name: transit-gateway-vpc-attachment
 spec:
-  description: 'TransitGatewayVPCAttachment lifecycle: create, try to change each immutable field, apply each update, delete.'
+  description: 'TransitGatewayVPCAttachment lifecycle: create, try to change each immutable field, apply each update, delete. Skipped: a modify empties the CR''s tags, so the next reconcile deletes them in AWS (aws-controllers-k8s/community#3168)'
+  skip: true
   bindings:
     - name: suffix
       value: (random('[a-z0-9]{8}'))

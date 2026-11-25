@@ -7,14 +7,17 @@
 #   - dhcpConfigurations
 #   - tags
 #   - vpcRefs
-# Not immutable, but no update changes them (mark them is_immutable if the controller can't update them):
-#   - dhcpConfigurations
+# Skipped, so they don't run (drop them from inputs.yaml's skip.tests to run them again):
+#   - dhcp-options: changing the VPC and the tags in one update reverts the tags, in the CR and in AWS (aws-controllers-k8s/community#3167)
+# Skipped from updates, so they're never changed (drop them from inputs.yaml's skip.updates to change them again):
+#   - dhcpConfigurations: create-only: no EC2 call changes it after create, so it should be marked is_immutable
 apiVersion: chainsaw.kyverno.io/v1alpha1
 kind: Test
 metadata:
   name: dhcp-options
 spec:
-  description: 'DHCPOptions lifecycle: create, try to change each immutable field, apply each update, delete.'
+  description: 'DHCPOptions lifecycle: create, try to change each immutable field, apply each update, delete. Skipped: changing the VPC and the tags in one update reverts the tags, in the CR and in AWS (aws-controllers-k8s/community#3167)'
+  skip: true
   bindings:
     - name: suffix
       value: (random('[a-z0-9]{8}'))

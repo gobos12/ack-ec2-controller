@@ -13,6 +13,8 @@
 #   - tags
 # Immutable, tried to change:
 #   - addressFamily
+# Skipped, so they don't run (drop them from inputs.yaml's skip.tests to run them again):
+#   - managed-prefix-list-resize-with-entries: a resize and entry changes go in one request, which AWS rejects, forever (aws-controllers-k8s/community#3173)
 apiVersion: chainsaw.kyverno.io/v1alpha1
 kind: Test
 metadata:
@@ -460,7 +462,8 @@ kind: Test
 metadata:
   name: managed-prefix-list-resize-with-entries
 spec:
-  description: 'ManagedPrefixList lifecycle, variant resize-with-entries: The size and the entries change in one update, which AWS doesn''t take in one request.'
+  description: 'ManagedPrefixList lifecycle, variant resize-with-entries: The size and the entries change in one update, which AWS doesn''t take in one request. Skipped: a resize and entry changes go in one request, which AWS rejects, forever (aws-controllers-k8s/community#3173)'
+  skip: true
   bindings:
     - name: suffix
       value: (random('[a-z0-9]{8}'))

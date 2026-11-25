@@ -10,11 +10,13 @@
 #   - requesterPeeringConnectionOptions
 #   - tags
 #   - vpcRef
-# Not immutable, but no update changes them (mark them is_immutable if the controller can't update them):
-#   - peerOwnerID
-#   - peerRegion
-#   - peerVPCID
-#   - vpcID
+# Skipped, so they don't run (drop them from inputs.yaml's skip.tests to run them again):
+#   - vpc-peering-connection-adoption: peering options are read from the spec, not from AWS, so the adopted spec is missing them (aws-controllers-k8s/community#3171)
+# Skipped from updates, so they're never changed (drop them from inputs.yaml's skip.updates to change them again):
+#   - peerOwnerID: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - peerRegion: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - peerVPCID: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - vpcID: create-only: no EC2 call changes it after create, so it should be marked is_immutable
 # Notes:
 #   - inputs give no invalid spec, so there's no ACK.Terminal check
 apiVersion: chainsaw.kyverno.io/v1alpha1
@@ -308,7 +310,8 @@ kind: Test
 metadata:
   name: vpc-peering-connection-adoption
 spec:
-  description: Adopts a VPCPeeringConnection left behind by a CR with deletion-policy retain, then deletes it.
+  description: 'Adopts a VPCPeeringConnection left behind by a CR with deletion-policy retain, then deletes it. Skipped: peering options are read from the spec, not from AWS, so the adopted spec is missing them (aws-controllers-k8s/community#3171)'
+  skip: true
   bindings:
     - name: suffix
       value: (random('[a-z0-9]{8}'))

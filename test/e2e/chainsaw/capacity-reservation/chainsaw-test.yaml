@@ -10,20 +10,20 @@
 #   - instancePlatform
 #   - instanceType
 #   - tags
-# Not immutable, but no update changes them (mark them is_immutable if the controller can't update them):
-#   - additionalInfo
-#   - availabilityZone
-#   - availabilityZoneID
-#   - commitmentDuration
-#   - deliveryPreference
-#   - ebsOptimized
-#   - ephemeralStorage
-#   - instancePlatform
-#   - instanceType
-#   - outpostARN
-#   - placementGroupARN
-#   - startDate
-#   - tenancy
+# Skipped from updates, so they're never changed (drop them from inputs.yaml's skip.updates to change them again):
+#   - additionalInfo: AWS never returns it, so a change can't be checked
+#   - availabilityZone: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - availabilityZoneID: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - commitmentDuration: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - deliveryPreference: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - ebsOptimized: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - ephemeralStorage: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - instancePlatform: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - instanceType: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - outpostARN: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - placementGroupARN: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - startDate: only a future-dated reservation can change it, and those have a large minimum size
+#   - tenancy: create-only: no EC2 call changes it after create, so it should be marked is_immutable
 # Notes:
 #   - inputs give no invalid spec, so there's no ACK.Terminal check
 apiVersion: chainsaw.kyverno.io/v1alpha1

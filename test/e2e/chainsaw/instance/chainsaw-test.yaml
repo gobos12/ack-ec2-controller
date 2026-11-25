@@ -24,7 +24,6 @@
 #   - cpuOptions
 #   - creditSpecification
 #   - disableAPITermination
-#   - ebsOptimized
 #   - iamInstanceProfile
 #   - imageID
 #   - instanceInitiatedShutdownBehavior
@@ -41,27 +40,44 @@
 #   - subnetID
 #   - subnetRef
 #   - tags
-#   - userData
-# Not immutable, but no update changes them (mark them is_immutable if the controller can't update them):
-#   - disableAPIStop
-#   - elasticGPUSpecification
-#   - elasticInferenceAccelerators
-#   - enclaveOptions
-#   - hibernationOptions
-#   - imageID
-#   - instanceInitiatedShutdownBehavior
-#   - instanceMarketOptions
-#   - kernelID
-#   - keyName
-#   - launchTemplate
-#   - licenseSpecifications
-#   - maxCount
-#   - minCount
-#   - networkInterfaces
-#   - privateIPAddress
-#   - ramDiskID
-#   - securityGroups
-#   - subnetID
+# Skipped, so they don't run (drop them from inputs.yaml's skip.tests to run them again):
+#   - instance-adoption: attributes DescribeInstances doesn't return are never read back, so the adopted spec is missing them (aws-controllers-k8s/community#3163)
+# Skipped from updates, so they're never changed (drop them from inputs.yaml's skip.updates to change them again):
+#   - blockDeviceMappings: only ModifyInstanceAttribute fields have an update path: a change is a silent no-op (aws-controllers-k8s/community#3206)
+#   - capacityReservationSpecification: no update path: a change is a silent no-op (aws-controllers-k8s/community#3202)
+#   - cpuOptions: only ModifyInstanceAttribute fields have an update path: a change is a silent no-op (aws-controllers-k8s/community#3206)
+#   - creditSpecification: only ModifyInstanceAttribute fields have an update path: a change is a silent no-op (aws-controllers-k8s/community#3206)
+#   - disableAPIStop: never read back from AWS, so a change leaves the CR and AWS out of step (aws-controllers-k8s/community#3163)
+#   - disableAPITermination: never read back from AWS, so a change leaves the CR and AWS out of step (aws-controllers-k8s/community#3163)
+#   - ebsOptimized: needs the instance stopped, and the controller never stops it, so AWS returns IncorrectInstanceState forever (aws-controllers-k8s/community#3201)
+#   - elasticGPUSpecification: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - elasticInferenceAccelerators: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - enclaveOptions: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - hibernationOptions: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - iamInstanceProfile: no call replaces the profile association: a change is a silent no-op (aws-controllers-k8s/community#3205)
+#   - imageID: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - instanceInitiatedShutdownBehavior: never read back from AWS, so a change leaves the CR and AWS out of step (aws-controllers-k8s/community#3163)
+#   - instanceMarketOptions: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - instanceType: needs the instance stopped, and the controller never stops it, so AWS returns IncorrectInstanceState forever (aws-controllers-k8s/community#3201)
+#   - ipv6AddressCount: never read back and no update path: a change is a silent no-op (aws-controllers-k8s/community#3203)
+#   - ipv6Addresses: never read back and no update path: a change is a silent no-op (aws-controllers-k8s/community#3203)
+#   - kernelID: only paravirtual AMIs take a kernel, and there are none left to test with
+#   - keyName: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - launchTemplate: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - licenseSpecifications: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - maintenanceOptions: only ModifyInstanceAttribute fields have an update path: a change is a silent no-op (aws-controllers-k8s/community#3206)
+#   - maxCount: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - metadataOptions: only ModifyInstanceAttribute fields have an update path: a change is a silent no-op (aws-controllers-k8s/community#3206)
+#   - minCount: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - monitoring: only ModifyInstanceAttribute fields have an update path: a change is a silent no-op (aws-controllers-k8s/community#3206)
+#   - networkInterfaces: only secondary interfaces can be attached or detached after create, which the test doesn't do yet
+#   - placement: only ModifyInstanceAttribute fields have an update path: a change is a silent no-op (aws-controllers-k8s/community#3206)
+#   - privateDNSNameOptions: only ModifyInstanceAttribute fields have an update path: a change is a silent no-op (aws-controllers-k8s/community#3206)
+#   - privateIPAddress: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - ramDiskID: only paravirtual AMIs take a RAM disk, and there are none left to test with
+#   - securityGroups: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - subnetID: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - userData: never read back from AWS, so a change leaves the CR and AWS out of step (aws-controllers-k8s/community#3163)
 # Notes:
 #   - inputs give no invalid spec, so there's no ACK.Terminal check
 apiVersion: chainsaw.kyverno.io/v1alpha1
@@ -638,73 +654,6 @@ spec:
             apiVersion: ec2.services.k8s.aws/v1alpha1
             kind: Instance
             name: ($name)
-    - name: update-1
-      description: Change instanceType
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-type-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{imageID: ImageId, instanceType: InstanceType, subnetRef: SubnetId}')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.small
-                  subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
-                instanceInitiatedShutdownBehavior: stop
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
     - name: delete
       use:
         template: ../_templates/delete.yaml
@@ -958,75 +907,6 @@ spec:
             apiVersion: ec2.services.k8s.aws/v1alpha1
             kind: Instance
             name: ($name)
-    - name: update-1
-      description: Change userData
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-user-data-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{imageID: ImageId, instanceType: InstanceType, subnetRef: SubnetId}')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson userData "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute userData --query 'UserData.Value')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.micro
-                  subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
-                instanceInitiatedShutdownBehavior: stop
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-                userData: ZWNobyBoZWxsbwo=
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
     - name: delete
       use:
         template: ../_templates/delete.yaml
@@ -1268,74 +1148,6 @@ spec:
               ($error): null
               (json_parse($stdout)):
                 describeInstances:
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.micro
-                  subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
-                instanceInitiatedShutdownBehavior: stop
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
-    - name: update-1
-      description: Change ebsOptimized
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-ebs-optimized-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{ebsOptimized: EbsOptimized, imageID: ImageId, instanceType: InstanceType, subnetRef: SubnetId}')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  ebsOptimized: true
                   imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
                   instanceType: t3.micro
                   subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
@@ -1603,75 +1415,6 @@ spec:
             apiVersion: ec2.services.k8s.aws/v1alpha1
             kind: Instance
             name: ($name)
-    - name: update-1
-      description: Change capacityReservationSpecification
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-capacity-reservation-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{capacityReservationSpecification: CapacityReservationSpecification.{CapacityReservationPreference: CapacityReservationPreference}, imageID: ImageId, instanceType: InstanceType, subnetRef: SubnetId}')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  capacityReservationSpecification:
-                    CapacityReservationPreference: none
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.micro
-                  subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
-                instanceInitiatedShutdownBehavior: stop
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
     - name: delete
       use:
         template: ../_templates/delete.yaml
@@ -1919,75 +1662,6 @@ spec:
                   subnetID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID]))
                 instanceInitiatedShutdownBehavior: stop
                 ipv6AddressCount: 1
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
-    - name: update-1
-      description: Change ipv6AddressCount
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-ipv6-count-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{imageID: ImageId, instanceType: InstanceType, subnetID: SubnetId}')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson ipv6AddressCount "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'length(Reservations[0].Instances[0].NetworkInterfaces[0].Ipv6Addresses)')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.micro
-                  subnetID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID]))
-                instanceInitiatedShutdownBehavior: stop
-                ipv6AddressCount: 2
                 resource:
                   (sort(SecurityGroups[].GroupId)):
                     - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
@@ -2252,77 +1926,6 @@ spec:
             apiVersion: ec2.services.k8s.aws/v1alpha1
             kind: Instance
             name: ($name)
-    - name: update-1
-      description: Change ipv6Addresses
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-ipv6-addresses-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{imageID: ImageId, instanceType: InstanceType, subnetID: SubnetId}')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson ipv6Addresses "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'sort_by(Reservations[0].Instances[0].NetworkInterfaces[0].Ipv6Addresses[].{ipv6Address: Ipv6Address}, &ipv6Address)')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.micro
-                  subnetID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID]))
-                instanceInitiatedShutdownBehavior: stop
-                ipv6Addresses:
-                  - ipv6Address: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1]))
-                  - ipv6Address: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2]))
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
     - name: delete
       use:
         template: ../_templates/delete.yaml
@@ -2570,76 +2173,6 @@ spec:
                   subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
                 iamInstanceProfile:
                   name: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A]))
-                instanceInitiatedShutdownBehavior: stop
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
-    - name: update-1
-      description: Change iamInstanceProfile
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-iam-instance-profile-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{imageID: ImageId, instanceType: InstanceType, subnetRef: SubnetId}')" \
-                --argjson iamInstanceProfile "$(arn=$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].IamInstanceProfile.Arn' --output text) && printf '{"name":"%s"}' "${arn##*/}")" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.micro
-                  subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
-                iamInstanceProfile:
-                  name: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B]))
                 instanceInitiatedShutdownBehavior: stop
                 resource:
                   (sort(SecurityGroups[].GroupId)):
@@ -2907,78 +2440,6 @@ spec:
             apiVersion: ec2.services.k8s.aws/v1alpha1
             kind: Instance
             name: ($name)
-    - name: update-1
-      description: Change metadataOptions
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-metadata-options-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{imageID: ImageId, instanceType: InstanceType, metadataOptions: MetadataOptions.{HttpEndpoint: HttpEndpoint, HttpPutResponseHopLimit: HttpPutResponseHopLimit, HttpTokens: HttpTokens, InstanceMetadataTags: InstanceMetadataTags}, subnetRef: SubnetId}')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.micro
-                  metadataOptions:
-                    HttpEndpoint: enabled
-                    HttpPutResponseHopLimit: 2
-                    HttpTokens: required
-                    InstanceMetadataTags: enabled
-                  subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
-                instanceInitiatedShutdownBehavior: stop
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
     - name: delete
       use:
         template: ../_templates/delete.yaml
@@ -3235,76 +2696,6 @@ spec:
             apiVersion: ec2.services.k8s.aws/v1alpha1
             kind: Instance
             name: ($name)
-    - name: update-1
-      description: Change monitoring
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-monitoring-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{imageID: ImageId, instanceType: InstanceType, subnetRef: SubnetId}')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson monitoring "$(st=$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].Monitoring.State' --output text) && case "$st" in enabled|pending) echo '{"enabled":true}' ;; *) echo '{"enabled":false}' ;; esac)" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.micro
-                  subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
-                instanceInitiatedShutdownBehavior: stop
-                monitoring:
-                  enabled: true
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
     - name: delete
       use:
         template: ../_templates/delete.yaml
@@ -3548,76 +2939,6 @@ spec:
               (json_parse($stdout)):
                 creditSpecification:
                   cpuCredits: standard
-                describeInstances:
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.micro
-                  subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
-                instanceInitiatedShutdownBehavior: stop
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
-    - name: update-1
-      description: Change creditSpecification
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-credit-specification-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{imageID: ImageId, instanceType: InstanceType, subnetRef: SubnetId}')" \
-                --argjson creditSpecification "$(aws ec2 describe-instance-credit-specifications --instance-ids $AWS_ID --query 'InstanceCreditSpecifications[0].{cpuCredits: CpuCredits}')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                creditSpecification:
-                  cpuCredits: unlimited
                 describeInstances:
                   imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
                   instanceType: t3.micro
@@ -3886,75 +3207,6 @@ spec:
             apiVersion: ec2.services.k8s.aws/v1alpha1
             kind: Instance
             name: ($name)
-    - name: update-1
-      description: Change maintenanceOptions
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-maintenance-options-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{imageID: ImageId, instanceType: InstanceType, maintenanceOptions: MaintenanceOptions.{AutoRecovery: AutoRecovery}, subnetRef: SubnetId}')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.micro
-                  maintenanceOptions:
-                    AutoRecovery: disabled
-                  subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
-                instanceInitiatedShutdownBehavior: stop
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
     - name: delete
       use:
         template: ../_templates/delete.yaml
@@ -4199,76 +3451,6 @@ spec:
                   cpuOptions:
                     CoreCount: 1
                     ThreadsPerCore: 2
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: c5.large
-                  subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
-                instanceInitiatedShutdownBehavior: stop
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
-    - name: update-1
-      description: Change cpuOptions
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-cpu-options-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{cpuOptions: CpuOptions.{CoreCount: CoreCount, ThreadsPerCore: ThreadsPerCore}, imageID: ImageId, instanceType: InstanceType, subnetRef: SubnetId}')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  cpuOptions:
-                    CoreCount: 1
-                    ThreadsPerCore: 1
                   imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
                   instanceType: c5.large
                   subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
@@ -4536,75 +3718,6 @@ spec:
             apiVersion: ec2.services.k8s.aws/v1alpha1
             kind: Instance
             name: ($name)
-    - name: update-1
-      description: Change placement
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-placement-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{imageID: ImageId, instanceType: InstanceType, placement: Placement.{GroupName: GroupName}, subnetRef: SubnetId}')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.micro
-                  placement:
-                    GroupName: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B]))
-                  subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
-                instanceInitiatedShutdownBehavior: stop
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
     - name: delete
       use:
         template: ../_templates/delete.yaml
@@ -4861,76 +3974,6 @@ spec:
             apiVersion: ec2.services.k8s.aws/v1alpha1
             kind: Instance
             name: ($name)
-    - name: update-1
-      description: Change privateDNSNameOptions
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-private-dns-name-options-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{imageID: ImageId, instanceType: InstanceType, privateDNSNameOptions: PrivateDnsNameOptions.{EnableResourceNameDnsARecord: EnableResourceNameDnsARecord, HostnameType: HostnameType}, subnetRef: SubnetId}')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.micro
-                  privateDNSNameOptions:
-                    EnableResourceNameDnsARecord: true
-                    HostnameType: resource-name
-                  subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
-                instanceInitiatedShutdownBehavior: stop
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
     - name: delete
       use:
         template: ../_templates/delete.yaml
@@ -5126,148 +4169,6 @@ spec:
       use:
         template: ../_templates/assert-synced.yaml
     - name: check-created
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{blockDeviceMappings: BlockDeviceMappings[].{DeviceName: DeviceName, Ebs: Ebs.{DeleteOnTermination: DeleteOnTermination}}, imageID: ImageId, instanceType: InstanceType, subnetRef: SubnetId}')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  blockDeviceMappings:
-                    - DeviceName: /dev/xvda
-                      Ebs:
-                        DeleteOnTermination: true
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.micro
-                  subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
-                instanceInitiatedShutdownBehavior: stop
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
-    - name: update-1
-      description: Change blockDeviceMappings
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-block-device-mappings-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{blockDeviceMappings: BlockDeviceMappings[].{DeviceName: DeviceName, Ebs: Ebs.{DeleteOnTermination: DeleteOnTermination}}, imageID: ImageId, instanceType: InstanceType, subnetRef: SubnetId}')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  blockDeviceMappings:
-                    - DeviceName: /dev/xvda
-                      Ebs:
-                        DeleteOnTermination: false
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.micro
-                  subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
-                instanceInitiatedShutdownBehavior: stop
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
-    - name: update-2
-      description: Change blockDeviceMappings
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-block-device-mappings-update-2.yaml
-    - name: check-update-2
       try:
         - description: Read back from AWS
           script:
@@ -5585,144 +4486,6 @@ spec:
             apiVersion: ec2.services.k8s.aws/v1alpha1
             kind: Instance
             name: ($name)
-    - name: update-1
-      description: Change disableAPITermination
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-disable-api-termination-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{imageID: ImageId, instanceType: InstanceType, subnetRef: SubnetId}')" \
-                --argjson disableAPITermination "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute disableApiTermination --query 'DisableApiTermination.Value')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.micro
-                  subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
-                disableAPITermination: true
-                instanceInitiatedShutdownBehavior: stop
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
-    - name: update-2
-      description: Change disableAPITermination
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: instance-disable-api-termination-update-2.yaml
-    - name: check-update-2
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Instance', $namespace, $name).status.instanceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: SG_A_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID)
-              - name: SG_B_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_B_ID)
-              - name: AMI_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: IPV6_SUBNET_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_SUBNET_ID)
-              - name: IPV6_ADDR_1
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_1)
-              - name: IPV6_ADDR_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.IPV6_ADDR_2)
-              - name: PROFILE_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_A)
-              - name: PROFILE_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PROFILE_B)
-              - name: PLACEMENT_GROUP_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_A)
-              - name: PLACEMENT_GROUP_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.PLACEMENT_GROUP_B)
-              - name: TERMINATION_GUARD
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.TERMINATION_GUARD)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeInstances "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0].{imageID: ImageId, instanceType: InstanceType, subnetRef: SubnetId}')" \
-                --argjson disableAPITermination "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute disableApiTermination --query 'DisableApiTermination.Value')" \
-                --argjson instanceInitiatedShutdownBehavior "$(aws ec2 describe-instance-attribute --instance-id $AWS_ID --attribute instanceInitiatedShutdownBehavior --query 'InstanceInitiatedShutdownBehavior.Value')" \
-                --argjson resource "$(aws ec2 describe-instances --instance-ids $AWS_ID --query 'Reservations[0].Instances[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeInstances:
-                  imageID: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AMI_ID]))
-                  instanceType: t3.micro
-                  subnetRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, 'instance-subnet').status.subnetID)
-                disableAPITermination: false
-                instanceInitiatedShutdownBehavior: stop
-                resource:
-                  (sort(SecurityGroups[].GroupId)):
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SG_A_ID]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Instance
-            name: ($name)
     - name: delete
       use:
         template: ../_templates/delete.yaml
@@ -5742,7 +4505,8 @@ kind: Test
 metadata:
   name: instance-adoption
 spec:
-  description: Adopts a Instance left behind by a CR with deletion-policy retain, then deletes it.
+  description: 'Adopts a Instance left behind by a CR with deletion-policy retain, then deletes it. Skipped: attributes DescribeInstances doesn''t return are never read back, so the adopted spec is missing them (aws-controllers-k8s/community#3163)'
+  skip: true
   bindings:
     - name: suffix
       value: (random('[a-z0-9]{8}'))

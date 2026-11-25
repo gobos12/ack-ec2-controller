@@ -17,14 +17,15 @@
 #   - routeTableRefs
 #   - tags
 #   - vpcRef
-# Not immutable, but no update changes them (mark them is_immutable if the controller can't update them):
-#   - availabilityZone
-#   - availabilityZoneID
-#   - cidrBlock
-#   - customerOwnedIPv4Pool
-#   - ipv6Native
-#   - outpostARN
-#   - vpcID
+# Skipped from updates, so they're never changed (drop them from inputs.yaml's skip.updates to change them again):
+#   - availabilityZone: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - availabilityZoneID: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - cidrBlock: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - customerOwnedIPv4Pool: needs an Outpost
+#   - ipv6CIDRBlock: removing it is a silent no-op: it isn't read back and there's no disassociate call (aws-controllers-k8s/community#3208)
+#   - ipv6Native: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - outpostARN: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - vpcID: create-only: no EC2 call changes it after create, so it should be marked is_immutable
 apiVersion: chainsaw.kyverno.io/v1alpha1
 kind: Test
 metadata:
@@ -535,51 +536,6 @@ spec:
                   enableDNS64: false
                   vpcRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'VPC', $namespace, 'subnet-vpc').status.vpcID)
                 ipv6CIDRBlock: (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SUBNET_IPV6_CIDR]))
-                resource:
-                  (PrivateDnsNameOptionsOnLaunch.EnableResourceNameDnsAAAARecord): false
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: Subnet
-            name: ($name)
-    - name: update-3
-      description: Change ipv6CIDRBlock
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: subnet-dualstack-update-3.yaml
-    - name: check-update-3
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'Subnet', $namespace, $name).status.subnetID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: SUBNET_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SUBNET_IPV6_CIDR)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeSubnets "$(aws ec2 describe-subnets --subnet-ids $AWS_ID --query 'Subnets[0].{assignIPv6AddressOnCreation: AssignIpv6AddressOnCreation, cidrBlock: CidrBlock, enableDNS64: EnableDns64, vpcRef: VpcId}')" \
-                --argjson ipv6CIDRBlock "$(aws ec2 describe-subnets --subnet-ids $AWS_ID --query 'Subnets[0].Ipv6CidrBlockAssociationSet[?Ipv6CidrBlockState.State==`associated`].Ipv6CidrBlock | [0]')" \
-                --argjson resource "$(aws ec2 describe-subnets --subnet-ids $AWS_ID --query 'Subnets[0]')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeSubnets:
-                  assignIPv6AddressOnCreation: false
-                  cidrBlock: 10.0.2.0/24
-                  enableDNS64: false
-                  vpcRef: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'VPC', $namespace, 'subnet-vpc').status.vpcID)
-                ipv6CIDRBlock: null
                 resource:
                   (PrivateDnsNameOptionsOnLaunch.EnableResourceNameDnsAAAARecord): false
       catch:

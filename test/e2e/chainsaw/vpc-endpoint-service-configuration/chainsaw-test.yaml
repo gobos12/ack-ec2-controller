@@ -8,10 +8,14 @@
 #   - allowedPrincipals
 #   - gatewayLoadBalancerARNs
 #   - networkLoadBalancerARNs
-#   - privateDNSName
 #   - supportedIPAddressTypes
 #   - supportedRegions
 #   - tags
+# Skipped from updates, so they're never changed (drop them from inputs.yaml's skip.updates to change them again):
+#   - gatewayLoadBalancerARNs: never applied: the update request carries no add or remove fields, but reports Synced (aws-controllers-k8s/community#3200)
+#   - networkLoadBalancerARNs: never applied: the update request carries no add or remove fields, but reports Synced (aws-controllers-k8s/community#3200)
+#   - privateDNSName: setting it works, but removing it is never applied (aws-controllers-k8s/community#3200)
+#   - supportedIPAddressTypes: never applied: the update request carries no add or remove fields, but reports Synced (aws-controllers-k8s/community#3200)
 # Notes:
 #   - inputs give no invalid spec, so there's no ACK.Terminal check
 apiVersion: chainsaw.kyverno.io/v1alpha1
@@ -221,7 +225,7 @@ spec:
             kind: VPCEndpointServiceConfiguration
             name: ($name)
     - name: update-1
-      description: Change acceptanceRequired, allowedPrincipals, privateDNSName, tags
+      description: Change acceptanceRequired, allowedPrincipals, tags
       use:
         template: ../_templates/apply-and-wait-reconciled.yaml
         with:
@@ -269,7 +273,7 @@ spec:
               export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
               # A call that fails prints its error, and leaves jq no JSON to read
               jq -n \
-                --argjson describeVPCEndpointServiceConfigurations "$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids $AWS_ID --query 'ServiceConfigurations[0].{acceptanceRequired: AcceptanceRequired, networkLoadBalancerARNs: NetworkLoadBalancerArns, privateDNSName: PrivateDnsName, supportedIPAddressTypes: SupportedIpAddressTypes, tags: sort_by(Tags[?!starts_with(Key, `"services.k8s.aws/"`)], &Key), systemTags: sort(Tags[?starts_with(Key, `"services.k8s.aws/"`)].Key)}')" \
+                --argjson describeVPCEndpointServiceConfigurations "$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids $AWS_ID --query 'ServiceConfigurations[0].{acceptanceRequired: AcceptanceRequired, networkLoadBalancerARNs: NetworkLoadBalancerArns, supportedIPAddressTypes: SupportedIpAddressTypes, tags: sort_by(Tags[?!starts_with(Key, `"services.k8s.aws/"`)], &Key), systemTags: sort(Tags[?starts_with(Key, `"services.k8s.aws/"`)].Key)}')" \
                 --argjson allowedPrincipals "$(aws ec2 describe-vpc-endpoint-service-permissions --service-id $AWS_ID --query 'sort(AllowedPrincipals[].Principal)')" \
                 '$ARGS.named'
             check:
@@ -282,7 +286,6 @@ spec:
                   acceptanceRequired: true
                   networkLoadBalancerARNs:
                     - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN]))
-                  privateDNSName: (join('', ['ack-chainsaw-', $suffix, '.example.com']))
                   supportedIPAddressTypes:
                     - ipv4
                   systemTags:
@@ -345,7 +348,7 @@ spec:
               export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
               # A call that fails prints its error, and leaves jq no JSON to read
               jq -n \
-                --argjson describeVPCEndpointServiceConfigurations "$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids $AWS_ID --query 'ServiceConfigurations[0].{acceptanceRequired: AcceptanceRequired, networkLoadBalancerARNs: NetworkLoadBalancerArns, privateDNSName: PrivateDnsName, supportedIPAddressTypes: SupportedIpAddressTypes, tags: sort_by(Tags[?!starts_with(Key, `"services.k8s.aws/"`)], &Key), systemTags: sort(Tags[?starts_with(Key, `"services.k8s.aws/"`)].Key)}')" \
+                --argjson describeVPCEndpointServiceConfigurations "$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids $AWS_ID --query 'ServiceConfigurations[0].{acceptanceRequired: AcceptanceRequired, networkLoadBalancerARNs: NetworkLoadBalancerArns, supportedIPAddressTypes: SupportedIpAddressTypes, tags: sort_by(Tags[?!starts_with(Key, `"services.k8s.aws/"`)], &Key), systemTags: sort(Tags[?starts_with(Key, `"services.k8s.aws/"`)].Key)}')" \
                 --argjson allowedPrincipals "$(aws ec2 describe-vpc-endpoint-service-permissions --service-id $AWS_ID --query 'sort(AllowedPrincipals[].Principal)')" \
                 --argjson supportedRegions "$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids $AWS_ID --query "ServiceConfigurations[0].SupportedRegions[?ServiceState=='Available' || ServiceState=='Pending'].Region" | jq -c --arg h "$HOME_REGION" '[.[] | select(. == $h)] + ([.[] | select(. != $h)] | sort)')" \
                 '$ARGS.named'
@@ -359,7 +362,6 @@ spec:
                   acceptanceRequired: true
                   networkLoadBalancerARNs:
                     - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN]))
-                  privateDNSName: (join('', ['ack-chainsaw-', $suffix, '.example.com']))
                   supportedIPAddressTypes:
                     - ipv4
                   systemTags:
@@ -425,7 +427,7 @@ spec:
               export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
               # A call that fails prints its error, and leaves jq no JSON to read
               jq -n \
-                --argjson describeVPCEndpointServiceConfigurations "$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids $AWS_ID --query 'ServiceConfigurations[0].{acceptanceRequired: AcceptanceRequired, networkLoadBalancerARNs: NetworkLoadBalancerArns, privateDNSName: PrivateDnsName, supportedIPAddressTypes: SupportedIpAddressTypes, tags: sort_by(Tags[?!starts_with(Key, `"services.k8s.aws/"`)], &Key), systemTags: sort(Tags[?starts_with(Key, `"services.k8s.aws/"`)].Key)}')" \
+                --argjson describeVPCEndpointServiceConfigurations "$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids $AWS_ID --query 'ServiceConfigurations[0].{acceptanceRequired: AcceptanceRequired, networkLoadBalancerARNs: NetworkLoadBalancerArns, supportedIPAddressTypes: SupportedIpAddressTypes, tags: sort_by(Tags[?!starts_with(Key, `"services.k8s.aws/"`)], &Key), systemTags: sort(Tags[?starts_with(Key, `"services.k8s.aws/"`)].Key)}')" \
                 --argjson allowedPrincipals "$(aws ec2 describe-vpc-endpoint-service-permissions --service-id $AWS_ID --query 'sort(AllowedPrincipals[].Principal)')" \
                 --argjson supportedRegions "$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids $AWS_ID --query "ServiceConfigurations[0].SupportedRegions[?ServiceState=='Available' || ServiceState=='Pending'].Region" | jq -c --arg h "$HOME_REGION" '[.[] | select(. == $h)] + ([.[] | select(. != $h)] | sort)')" \
                 '$ARGS.named'
@@ -437,237 +439,8 @@ spec:
                   acceptanceRequired: true
                   networkLoadBalancerARNs:
                     - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN]))
-                  privateDNSName: (join('', ['ack-chainsaw-', $suffix, '.example.com']))
                   supportedIPAddressTypes:
                     - ipv4
-                  systemTags:
-                    - services.k8s.aws/controller-version
-                    - services.k8s.aws/namespace
-                  tags: []
-                supportedRegions:
-                  - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.HOME_REGION]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: VPCEndpointServiceConfiguration
-            name: ($name)
-    - name: update-4
-      description: Change privateDNSName
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: vpc-endpoint-service-configuration-update-4.yaml
-    - name: check-update-4
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'VPCEndpointServiceConfiguration', $namespace, $name).status.serviceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: ACCOUNT_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.ACCOUNT_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: AZ_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AZ_A)
-              - name: AZ_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AZ_B)
-              - name: SUBNET_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SUBNET_A)
-              - name: SUBNET_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SUBNET_B)
-              - name: LOAD_BALANCERS
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.LOAD_BALANCERS)
-              - name: NLB_ARN
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN)
-              - name: NLB_ARN_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN_2)
-              - name: GWLB_ARN
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.GWLB_ARN)
-              - name: GWLB_ARN_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.GWLB_ARN_2)
-              - name: HOME_REGION
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.HOME_REGION)
-              - name: OTHER_REGION
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.OTHER_REGION)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeVPCEndpointServiceConfigurations "$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids $AWS_ID --query 'ServiceConfigurations[0].{acceptanceRequired: AcceptanceRequired, networkLoadBalancerARNs: NetworkLoadBalancerArns, privateDNSName: PrivateDnsName, supportedIPAddressTypes: SupportedIpAddressTypes, tags: sort_by(Tags[?!starts_with(Key, `"services.k8s.aws/"`)], &Key), systemTags: sort(Tags[?starts_with(Key, `"services.k8s.aws/"`)].Key)}')" \
-                --argjson allowedPrincipals "$(aws ec2 describe-vpc-endpoint-service-permissions --service-id $AWS_ID --query 'sort(AllowedPrincipals[].Principal)')" \
-                --argjson supportedRegions "$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids $AWS_ID --query "ServiceConfigurations[0].SupportedRegions[?ServiceState=='Available' || ServiceState=='Pending'].Region" | jq -c --arg h "$HOME_REGION" '[.[] | select(. == $h)] + ([.[] | select(. != $h)] | sort)')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                allowedPrincipals: []
-                describeVPCEndpointServiceConfigurations:
-                  acceptanceRequired: true
-                  networkLoadBalancerARNs:
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN]))
-                  privateDNSName: null
-                  supportedIPAddressTypes:
-                    - ipv4
-                  systemTags:
-                    - services.k8s.aws/controller-version
-                    - services.k8s.aws/namespace
-                  tags: []
-                supportedRegions:
-                  - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.HOME_REGION]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: VPCEndpointServiceConfiguration
-            name: ($name)
-    - name: update-5
-      description: Change supportedIPAddressTypes
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: vpc-endpoint-service-configuration-update-5.yaml
-    - name: check-update-5
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'VPCEndpointServiceConfiguration', $namespace, $name).status.serviceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: ACCOUNT_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.ACCOUNT_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: AZ_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AZ_A)
-              - name: AZ_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AZ_B)
-              - name: SUBNET_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SUBNET_A)
-              - name: SUBNET_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SUBNET_B)
-              - name: LOAD_BALANCERS
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.LOAD_BALANCERS)
-              - name: NLB_ARN
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN)
-              - name: NLB_ARN_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN_2)
-              - name: GWLB_ARN
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.GWLB_ARN)
-              - name: GWLB_ARN_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.GWLB_ARN_2)
-              - name: HOME_REGION
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.HOME_REGION)
-              - name: OTHER_REGION
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.OTHER_REGION)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeVPCEndpointServiceConfigurations "$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids $AWS_ID --query 'ServiceConfigurations[0].{acceptanceRequired: AcceptanceRequired, networkLoadBalancerARNs: NetworkLoadBalancerArns, privateDNSName: PrivateDnsName, supportedIPAddressTypes: SupportedIpAddressTypes, tags: sort_by(Tags[?!starts_with(Key, `"services.k8s.aws/"`)], &Key), systemTags: sort(Tags[?starts_with(Key, `"services.k8s.aws/"`)].Key)}')" \
-                --argjson allowedPrincipals "$(aws ec2 describe-vpc-endpoint-service-permissions --service-id $AWS_ID --query 'sort(AllowedPrincipals[].Principal)')" \
-                --argjson supportedRegions "$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids $AWS_ID --query "ServiceConfigurations[0].SupportedRegions[?ServiceState=='Available' || ServiceState=='Pending'].Region" | jq -c --arg h "$HOME_REGION" '[.[] | select(. == $h)] + ([.[] | select(. != $h)] | sort)')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                allowedPrincipals: []
-                describeVPCEndpointServiceConfigurations:
-                  acceptanceRequired: true
-                  networkLoadBalancerARNs:
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN]))
-                  privateDNSName: null
-                  supportedIPAddressTypes:
-                    - ipv4
-                    - ipv6
-                  systemTags:
-                    - services.k8s.aws/controller-version
-                    - services.k8s.aws/namespace
-                  tags: []
-                supportedRegions:
-                  - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.HOME_REGION]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: VPCEndpointServiceConfiguration
-            name: ($name)
-    - name: update-6
-      description: Change networkLoadBalancerARNs
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: vpc-endpoint-service-configuration-update-6.yaml
-    - name: check-update-6
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'VPCEndpointServiceConfiguration', $namespace, $name).status.serviceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: ACCOUNT_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.ACCOUNT_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: AZ_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AZ_A)
-              - name: AZ_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AZ_B)
-              - name: SUBNET_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SUBNET_A)
-              - name: SUBNET_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SUBNET_B)
-              - name: LOAD_BALANCERS
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.LOAD_BALANCERS)
-              - name: NLB_ARN
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN)
-              - name: NLB_ARN_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN_2)
-              - name: GWLB_ARN
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.GWLB_ARN)
-              - name: GWLB_ARN_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.GWLB_ARN_2)
-              - name: HOME_REGION
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.HOME_REGION)
-              - name: OTHER_REGION
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.OTHER_REGION)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeVPCEndpointServiceConfigurations "$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids $AWS_ID --query 'ServiceConfigurations[0].{acceptanceRequired: AcceptanceRequired, networkLoadBalancerARNs: NetworkLoadBalancerArns, privateDNSName: PrivateDnsName, supportedIPAddressTypes: SupportedIpAddressTypes, tags: sort_by(Tags[?!starts_with(Key, `"services.k8s.aws/"`)], &Key), systemTags: sort(Tags[?starts_with(Key, `"services.k8s.aws/"`)].Key)}')" \
-                --argjson allowedPrincipals "$(aws ec2 describe-vpc-endpoint-service-permissions --service-id $AWS_ID --query 'sort(AllowedPrincipals[].Principal)')" \
-                --argjson supportedRegions "$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids $AWS_ID --query "ServiceConfigurations[0].SupportedRegions[?ServiceState=='Available' || ServiceState=='Pending'].Region" | jq -c --arg h "$HOME_REGION" '[.[] | select(. == $h)] + ([.[] | select(. != $h)] | sort)')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                allowedPrincipals: []
-                describeVPCEndpointServiceConfigurations:
-                  acceptanceRequired: true
-                  networkLoadBalancerARNs:
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN]))
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN_2]))
-                  privateDNSName: null
-                  supportedIPAddressTypes:
-                    - ipv4
-                    - ipv6
                   systemTags:
                     - services.k8s.aws/controller-version
                     - services.k8s.aws/namespace
@@ -830,133 +603,6 @@ spec:
       use:
         template: ../_templates/assert-synced.yaml
     - name: check-created
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'VPCEndpointServiceConfiguration', $namespace, $name).status.serviceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: ACCOUNT_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.ACCOUNT_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: AZ_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AZ_A)
-              - name: AZ_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AZ_B)
-              - name: SUBNET_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SUBNET_A)
-              - name: SUBNET_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SUBNET_B)
-              - name: LOAD_BALANCERS
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.LOAD_BALANCERS)
-              - name: NLB_ARN
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN)
-              - name: NLB_ARN_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN_2)
-              - name: GWLB_ARN
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.GWLB_ARN)
-              - name: GWLB_ARN_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.GWLB_ARN_2)
-              - name: HOME_REGION
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.HOME_REGION)
-              - name: OTHER_REGION
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.OTHER_REGION)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeVPCEndpointServiceConfigurations "$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids $AWS_ID --query 'ServiceConfigurations[0].{acceptanceRequired: AcceptanceRequired, gatewayLoadBalancerARNs: GatewayLoadBalancerArns}')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeVPCEndpointServiceConfigurations:
-                  acceptanceRequired: false
-                  gatewayLoadBalancerARNs:
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.GWLB_ARN]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: VPCEndpointServiceConfiguration
-            name: ($name)
-    - name: update-1
-      description: Change gatewayLoadBalancerARNs
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: vpc-endpoint-service-configuration-gateway-update-1.yaml
-    - name: check-update-1
-      try:
-        - description: Read back from AWS
-          script:
-            env:
-              - name: AWS_ID
-                value: (x_k8s_get($client, 'ec2.services.k8s.aws/v1alpha1', 'VPCEndpointServiceConfiguration', $namespace, $name).status.serviceID)
-              - name: SUFFIX
-                value: ($suffix)
-              - name: ACCOUNT_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.ACCOUNT_ID)
-              - name: VPC_ID
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_ID)
-              - name: VPC_IPV6_CIDR
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.VPC_IPV6_CIDR)
-              - name: AZ_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AZ_A)
-              - name: AZ_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.AZ_B)
-              - name: SUBNET_A
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SUBNET_A)
-              - name: SUBNET_B
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.SUBNET_B)
-              - name: LOAD_BALANCERS
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.LOAD_BALANCERS)
-              - name: NLB_ARN
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN)
-              - name: NLB_ARN_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.NLB_ARN_2)
-              - name: GWLB_ARN
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.GWLB_ARN)
-              - name: GWLB_ARN_2
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.GWLB_ARN_2)
-              - name: HOME_REGION
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.HOME_REGION)
-              - name: OTHER_REGION
-                value: (x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.OTHER_REGION)
-            content: |-
-              export AWS_DEFAULT_OUTPUT=json AWS_RETRY_MODE=adaptive
-              # A call that fails prints its error, and leaves jq no JSON to read
-              jq -n \
-                --argjson describeVPCEndpointServiceConfigurations "$(aws ec2 describe-vpc-endpoint-service-configurations --service-ids $AWS_ID --query 'ServiceConfigurations[0].{acceptanceRequired: AcceptanceRequired, gatewayLoadBalancerARNs: GatewayLoadBalancerArns}')" \
-                '$ARGS.named'
-            check:
-              ($error): null
-              (json_parse($stdout)):
-                describeVPCEndpointServiceConfigurations:
-                  acceptanceRequired: false
-                  gatewayLoadBalancerARNs:
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.GWLB_ARN]))
-                    - (join('', [x_k8s_get($client, 'v1', 'ConfigMap', $namespace, 'ack-test-values').data.GWLB_ARN_2]))
-      catch:
-        - describe:
-            apiVersion: ec2.services.k8s.aws/v1alpha1
-            kind: VPCEndpointServiceConfiguration
-            name: ($name)
-    - name: update-2
-      description: Change gatewayLoadBalancerARNs
-      use:
-        template: ../_templates/apply-and-wait-reconciled.yaml
-        with:
-          bindings:
-            - name: file
-              value: vpc-endpoint-service-configuration-gateway-update-2.yaml
-    - name: check-update-2
       try:
         - description: Read back from AWS
           script:

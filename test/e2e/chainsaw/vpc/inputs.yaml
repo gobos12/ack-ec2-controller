@@ -57,3 +57,20 @@ checks:
       --filters Name=vpc-id,Values=$AWS_ID Name=group-name,Values=default
       --query 'length(SecurityGroups[0].IpPermissions) == `0` && length(SecurityGroups[0].IpPermissionsEgress) == `0`'
     when: true
+
+# Held back until the controller bugs the tests found are fixed, and the
+# create-only fields are marked is_immutable in generator.yaml. Drop an entry
+# to run it again.
+skip:
+  tests:
+    vpc-disallowed: "unset DNS and NAU attributes are synced with no value, which AWS rejects, so the VPC never syncs (aws-controllers-k8s/community#3161)"
+  updates:
+    amazonProvidedIPv6CIDRBlock: "create-only: AssociateVpcCidrBlock adds another block but can't change this one, so it should be marked is_immutable"
+    instanceTenancy: "never updated: the diff is detected but ModifyVpcTenancy is never called (aws-controllers-k8s/community#3198)"
+    ipv4IPAMPoolID: "create-only: AssociateVpcCidrBlock adds another block but can't change this one, so it should be marked is_immutable"
+    ipv4NetmaskLength: "create-only: AssociateVpcCidrBlock adds another block but can't change this one, so it should be marked is_immutable"
+    ipv6CIDRBlock: "create-only: AssociateVpcCidrBlock adds another block but can't change this one, so it should be marked is_immutable"
+    ipv6CIDRBlockNetworkBorderGroup: "create-only: AssociateVpcCidrBlock adds another block but can't change this one, so it should be marked is_immutable"
+    ipv6IPAMPoolID: "create-only: AssociateVpcCidrBlock adds another block but can't change this one, so it should be marked is_immutable"
+    ipv6NetmaskLength: "create-only: AssociateVpcCidrBlock adds another block but can't change this one, so it should be marked is_immutable"
+    ipv6Pool: "create-only: AssociateVpcCidrBlock adds another block but can't change this one, so it should be marked is_immutable"

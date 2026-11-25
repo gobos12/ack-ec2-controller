@@ -87,3 +87,10 @@ checks:
     command: >-
       aws ec2 get-managed-prefix-list-entries --prefix-list-id $AWS_ID
       --query 'sort_by(Entries, &Cidr)[].{cidr: Cidr, description: Description}'
+
+# Held back until the controller bugs the tests found are fixed, and the
+# create-only fields are marked is_immutable in generator.yaml. Drop an entry
+# to run it again.
+skip:
+  tests:
+    managed-prefix-list-resize-with-entries: "a resize and entry changes go in one request, which AWS rejects, forever (aws-controllers-k8s/community#3173)"

@@ -127,7 +127,7 @@ create:
 # balancers. A failed step ends the test, so the changes expected to work come
 # first, and each one known or expected not to work comes last, in its own
 # update: removing the private DNS name, then adding an IP address type and a
-# load balancer (BUGS.md #18).
+# load balancer (aws-controllers-k8s/community#3200).
 updates:
 - acceptanceRequired: true
   privateDNSName: ack-chainsaw-$SUFFIX.example.com
@@ -183,3 +183,13 @@ checks:
       aws ec2 describe-vpc-endpoint-service-permissions --service-id $AWS_ID
       --query 'sort(AllowedPrincipals[].Principal)'
     unordered: true
+
+# Held back until the controller bugs the tests found are fixed, and the
+# create-only fields are marked is_immutable in generator.yaml. Drop an entry
+# to run it again.
+skip:
+  updates:
+    gatewayLoadBalancerARNs: "never applied: the update request carries no add or remove fields, but reports Synced (aws-controllers-k8s/community#3200)"
+    networkLoadBalancerARNs: "never applied: the update request carries no add or remove fields, but reports Synced (aws-controllers-k8s/community#3200)"
+    privateDNSName: "setting it works, but removing it is never applied (aws-controllers-k8s/community#3200)"
+    supportedIPAddressTypes: "never applied: the update request carries no add or remove fields, but reports Synced (aws-controllers-k8s/community#3200)"

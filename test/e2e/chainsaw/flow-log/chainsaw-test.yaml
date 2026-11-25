@@ -9,17 +9,17 @@
 #   - resourceType
 #   - tags
 #   - trafficType
-# Not immutable, but no update changes them (mark them is_immutable if the controller can't update them):
-#   - deliverLogsPermissionARN
-#   - destinationOptions
-#   - logDestination
-#   - logDestinationType
-#   - logFormat
-#   - logGroupName
-#   - maxAggregationInterval
-#   - resourceID
-#   - resourceType
-#   - trafficType
+# Skipped from updates, so they're never changed (drop them from inputs.yaml's skip.updates to change them again):
+#   - deliverLogsPermissionARN: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - destinationOptions: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - logDestination: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - logDestinationType: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - logFormat: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - logGroupName: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - maxAggregationInterval: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - resourceID: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - resourceType: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - trafficType: create-only: no EC2 call changes it after create, so it should be marked is_immutable
 apiVersion: chainsaw.kyverno.io/v1alpha1
 kind: Test
 metadata:

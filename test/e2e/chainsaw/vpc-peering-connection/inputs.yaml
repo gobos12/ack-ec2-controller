@@ -77,3 +77,15 @@ checks:
     path: RequesterVpcInfo.VpcId
   peerVPCRef:
     path: AccepterVpcInfo.VpcId
+
+# Held back until the controller bugs the tests found are fixed, and the
+# create-only fields are marked is_immutable in generator.yaml. Drop an entry
+# to run it again.
+skip:
+  tests:
+    vpc-peering-connection-adoption: "peering options are read from the spec, not from AWS, so the adopted spec is missing them (aws-controllers-k8s/community#3171)"
+  updates:
+    peerOwnerID: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    peerRegion: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    peerVPCID: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    vpcID: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"

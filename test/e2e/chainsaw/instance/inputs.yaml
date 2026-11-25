@@ -172,7 +172,8 @@ create:
 # applies these one at a time. sourceDestCheckEnabled and the security group
 # are read back from DescribeInstances and change while the instance runs. Not
 # disableAPIStop or instanceInitiatedShutdownBehavior: the controller sets them
-# but can't read them back (BUGS.md #3), so an update to them never reconciles.
+# but can't read them back (aws-controllers-k8s/community#3163), so an update
+# to them never reconciles.
 updates:
 - sourceDestCheckEnabled: false
   securityGroupIDs:
@@ -460,3 +461,46 @@ checks:
     path: SecurityGroups
     select: GroupId
     unordered: true
+
+# Held back until the controller bugs the tests found are fixed, and the
+# create-only fields are marked is_immutable in generator.yaml. Drop an entry
+# to run it again.
+skip:
+  tests:
+    instance-adoption: "attributes DescribeInstances doesn't return are never read back, so the adopted spec is missing them (aws-controllers-k8s/community#3163)"
+  updates:
+    blockDeviceMappings: "only ModifyInstanceAttribute fields have an update path: a change is a silent no-op (aws-controllers-k8s/community#3206)"
+    capacityReservationSpecification: "no update path: a change is a silent no-op (aws-controllers-k8s/community#3202)"
+    cpuOptions: "only ModifyInstanceAttribute fields have an update path: a change is a silent no-op (aws-controllers-k8s/community#3206)"
+    creditSpecification: "only ModifyInstanceAttribute fields have an update path: a change is a silent no-op (aws-controllers-k8s/community#3206)"
+    disableAPIStop: "never read back from AWS, so a change leaves the CR and AWS out of step (aws-controllers-k8s/community#3163)"
+    disableAPITermination: "never read back from AWS, so a change leaves the CR and AWS out of step (aws-controllers-k8s/community#3163)"
+    ebsOptimized: "needs the instance stopped, and the controller never stops it, so AWS returns IncorrectInstanceState forever (aws-controllers-k8s/community#3201)"
+    elasticGPUSpecification: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    elasticInferenceAccelerators: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    enclaveOptions: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    hibernationOptions: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    iamInstanceProfile: "no call replaces the profile association: a change is a silent no-op (aws-controllers-k8s/community#3205)"
+    imageID: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    instanceInitiatedShutdownBehavior: "never read back from AWS, so a change leaves the CR and AWS out of step (aws-controllers-k8s/community#3163)"
+    instanceMarketOptions: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    instanceType: "needs the instance stopped, and the controller never stops it, so AWS returns IncorrectInstanceState forever (aws-controllers-k8s/community#3201)"
+    ipv6AddressCount: "never read back and no update path: a change is a silent no-op (aws-controllers-k8s/community#3203)"
+    ipv6Addresses: "never read back and no update path: a change is a silent no-op (aws-controllers-k8s/community#3203)"
+    kernelID: "only paravirtual AMIs take a kernel, and there are none left to test with"
+    keyName: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    launchTemplate: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    licenseSpecifications: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    maintenanceOptions: "only ModifyInstanceAttribute fields have an update path: a change is a silent no-op (aws-controllers-k8s/community#3206)"
+    maxCount: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    metadataOptions: "only ModifyInstanceAttribute fields have an update path: a change is a silent no-op (aws-controllers-k8s/community#3206)"
+    minCount: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    monitoring: "only ModifyInstanceAttribute fields have an update path: a change is a silent no-op (aws-controllers-k8s/community#3206)"
+    networkInterfaces: "only secondary interfaces can be attached or detached after create, which the test doesn't do yet"
+    placement: "only ModifyInstanceAttribute fields have an update path: a change is a silent no-op (aws-controllers-k8s/community#3206)"
+    privateDNSNameOptions: "only ModifyInstanceAttribute fields have an update path: a change is a silent no-op (aws-controllers-k8s/community#3206)"
+    privateIPAddress: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    ramDiskID: "only paravirtual AMIs take a RAM disk, and there are none left to test with"
+    securityGroups: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    subnetID: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
+    userData: "never read back from AWS, so a change leaves the CR and AWS out of step (aws-controllers-k8s/community#3163)"

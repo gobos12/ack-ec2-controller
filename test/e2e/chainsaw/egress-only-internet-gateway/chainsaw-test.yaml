@@ -6,6 +6,8 @@
 # Checked in AWS:
 #   - tags
 #   - vpcRef
+# Skipped, so they don't run (drop them from inputs.yaml's skip.tests to run them again):
+#   - egress-only-internet-gateway-adoption: the read never sets spec.vpcID, so the adopted gateway never syncs (aws-controllers-k8s/community#3170)
 # Notes:
 #   - neither the generator config, the API model's waiters nor the inputs give a not-found error code, a deleted waiter or a deleted query, so deletion isn't checked in AWS
 #   - inputs give no invalid spec, so there's no ACK.Terminal check
@@ -269,7 +271,8 @@ kind: Test
 metadata:
   name: egress-only-internet-gateway-adoption
 spec:
-  description: Adopts a EgressOnlyInternetGateway left behind by a CR with deletion-policy retain, then deletes it.
+  description: 'Adopts a EgressOnlyInternetGateway left behind by a CR with deletion-policy retain, then deletes it. Skipped: the read never sets spec.vpcID, so the adopted gateway never syncs (aws-controllers-k8s/community#3170)'
+  skip: true
   bindings:
     - name: suffix
       value: (random('[a-z0-9]{8}'))

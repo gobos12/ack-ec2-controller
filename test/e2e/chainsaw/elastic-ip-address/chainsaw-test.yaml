@@ -6,11 +6,11 @@
 # Checked in AWS:
 #   - publicIPv4Pool
 #   - tags
-# Not immutable, but no update changes them (mark them is_immutable if the controller can't update them):
-#   - address
-#   - customerOwnedIPv4Pool
-#   - networkBorderGroup
-#   - publicIPv4Pool
+# Skipped from updates, so they're never changed (drop them from inputs.yaml's skip.updates to change them again):
+#   - address: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - customerOwnedIPv4Pool: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - networkBorderGroup: create-only: no EC2 call changes it after create, so it should be marked is_immutable
+#   - publicIPv4Pool: create-only: no EC2 call changes it after create, so it should be marked is_immutable
 apiVersion: chainsaw.kyverno.io/v1alpha1
 kind: Test
 metadata:

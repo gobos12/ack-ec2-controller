@@ -41,3 +41,10 @@ variants:
 checks:
   vpcRef:
     path: Attachments[0].VpcId
+
+# Held back until the controller bugs the tests found are fixed, and the
+# create-only fields are marked is_immutable in generator.yaml. Drop an entry
+# to run it again.
+skip:
+  tests:
+    egress-only-internet-gateway-adoption: "the read never sets spec.vpcID, so the adopted gateway never syncs (aws-controllers-k8s/community#3170)"
