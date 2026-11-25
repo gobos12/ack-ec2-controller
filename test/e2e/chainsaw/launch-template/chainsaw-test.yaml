@@ -9,12 +9,12 @@
 #   - name
 #   - tags
 #   - versionDescription
+# Immutable, tried to change:
+#   - name
 # Skipped, so they don't run (drop them from inputs.yaml's skip.tests to run them again):
 #   - launch-template: the configured not-found code doesn't match what AWS returns for a missing ID, so the delete never sees the template gone (aws-controllers-k8s/community#3172)
 #   - launch-template-adoption: the read never sets spec.name, so the adopted template goes Terminal (aws-controllers-k8s/community#3169)
 #   - launch-template-minimal: the configured not-found code doesn't match what AWS returns for a missing ID, so the delete never sees the template gone (aws-controllers-k8s/community#3172)
-# Skipped from updates, so they're never changed (drop them from inputs.yaml's skip.updates to change them again):
-#   - name: create-only: no EC2 call changes it after create, so it should be marked is_immutable
 # Notes:
 #   - inputs give no invalid spec, so there's no ACK.Terminal check
 apiVersion: chainsaw.kyverno.io/v1alpha1
@@ -85,6 +85,20 @@ spec:
             apiVersion: ec2.services.k8s.aws/v1alpha1
             kind: LaunchTemplate
             name: ($name)
+    - name: immutable-name
+      try:
+        - description: Check changing name is rejected
+          patch:
+            resource:
+              apiVersion: ec2.services.k8s.aws/v1alpha1
+              kind: LaunchTemplate
+              metadata:
+                name: launch-template
+              spec:
+                name: (join('', ['ack-chainsaw-', $suffix, '-changed']))
+            expect:
+              - check:
+                  ($error != null): true
     - name: update-1
       description: Change data, tags, versionDescription
       use:
@@ -242,7 +256,7 @@ spec:
             - name: describeCommand
               value: aws ec2 describe-launch-templates --launch-template-ids $AWS_ID
             - name: notFoundCode
-              value: InvalidLaunchTemplateName.NotFoundException
+              value: InvalidLaunchTemplateId.NotFound
 ---
 apiVersion: chainsaw.kyverno.io/v1alpha1
 kind: Test
@@ -299,6 +313,20 @@ spec:
             apiVersion: ec2.services.k8s.aws/v1alpha1
             kind: LaunchTemplate
             name: ($name)
+    - name: immutable-name
+      try:
+        - description: Check changing name is rejected
+          patch:
+            resource:
+              apiVersion: ec2.services.k8s.aws/v1alpha1
+              kind: LaunchTemplate
+              metadata:
+                name: launch-template-minimal
+              spec:
+                name: (join('', ['ack-chainsaw-minimal-', $suffix, '-changed']))
+            expect:
+              - check:
+                  ($error != null): true
     - name: delete
       use:
         template: ../_templates/delete.yaml
@@ -307,7 +335,7 @@ spec:
             - name: describeCommand
               value: aws ec2 describe-launch-templates --launch-template-ids $AWS_ID
             - name: notFoundCode
-              value: InvalidLaunchTemplateName.NotFoundException
+              value: InvalidLaunchTemplateId.NotFound
 ---
 apiVersion: chainsaw.kyverno.io/v1alpha1
 kind: Test
@@ -443,4 +471,4 @@ spec:
             - name: describeCommand
               value: aws ec2 describe-launch-templates --launch-template-ids $AWS_ID
             - name: notFoundCode
-              value: InvalidLaunchTemplateName.NotFoundException
+              value: InvalidLaunchTemplateId.NotFound

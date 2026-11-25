@@ -71,5 +71,3 @@ skip:
     launch-template: "the configured not-found code doesn't match what AWS returns for a missing ID, so the delete never sees the template gone (aws-controllers-k8s/community#3172)"
     launch-template-adoption: "the read never sets spec.name, so the adopted template goes Terminal (aws-controllers-k8s/community#3169)"
     launch-template-minimal: "the configured not-found code doesn't match what AWS returns for a missing ID, so the delete never sees the template gone (aws-controllers-k8s/community#3172)"
-  updates:
-    name: "create-only: no EC2 call changes it after create, so it should be marked is_immutable"
